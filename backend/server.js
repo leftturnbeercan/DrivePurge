@@ -21,8 +21,8 @@ wss.on('connection', function connection(ws) {
     ws.on('message', function incoming(message) {
         console.log('Received message from client:', message);
 
-        // Ensure message is correctly parsed and handled
-        const parsedMessage = message.trim().toLowerCase();
+        // Convert message buffer to string
+        const parsedMessage = message.toString().trim().toLowerCase();
         console.log('Parsed message:', parsedMessage);
 
         if (parsedMessage === 'scan') {
