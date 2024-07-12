@@ -69,6 +69,25 @@ function scanDrives(ws) {
                         console.error(`Error getting disk usage for drive ${device.mountpoint}:`, err);
                     }
                 }
+
+                if (device.children) {
+                    device.children.forEach(child => {
+                        if (child.mountpoint) {
+                            try {
+                                const info = diskusage.checkSync(child.mountpoint);
+                                driveList.push({
+                                    name: child.name,
+                                    mountpoint: child.mountpoint,
+                                    total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
+                                    used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
+                                    available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
+                                });
+                            } catch (err) {
+                                console.error(`Error getting disk usage for drive ${child.mountpoint}:`, err);
+                            }
+                        }
+                    });
+                }
             });
 
             console.log('Sending drive list:', driveList);
