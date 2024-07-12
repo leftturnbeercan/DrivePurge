@@ -1,42 +1,50 @@
-// Import required modules
 const WebSocket = require('ws');
+const diskusage = require('diskusage');
+const path = require('path');
 
-// Add a console.log statement to indicate that the server file is being executed
-console.log('Server file is being executed...');
+const wss = new WebSocket.Server({ port: 8080 });
 
-// Create a WebSocket server
-const wss = new WebSocket.Server({ port: 8080 }); // Choose a suitable port
-
-// Event listener for WebSocket server initialization
 wss.on('listening', () => {
     console.log('WebSocket server is listening on port 8080...');
 });
 
-// Event listener for WebSocket connections
 wss.on('connection', function connection(ws) {
     console.log('A new client connected!');
 
-    // Event listener for incoming messages from clients
     ws.on('message', function incoming(message) {
         console.log('Received message from client:', message);
 
-        // Echo the message back to the client
-        ws.send(`Echo: ${message}`);
+        if (message === 'scan') {
+            scanDrives(ws);
+        } else if (message === 'purge') {
+            purgeDrives(ws);
+        } else {
+            ws.send(`Unknown command: ${message}`);
+        }
     });
 });
 
-// Error handling for WebSocket server initialization
-wss.on('error', (error) => {
-    console.error('WebSocket server encountered an error:', error);
-});
+function scanDrives(ws) {
+    const drives = ['/']; // Root directory for Unix-based systems
 
-// Error handling for WebSocket connections
-wss.on('connectionError', (error) => {
-    console.error('WebSocket connection error:', error);
-});
+    Promise.all(drives.map(drive => diskusage.check(drive)))
+        .then(results => {
+            const driveList = results.map((result, index) => ({
+                name: drives[index],
+                total: result.total,
+                used: result.total - result.free,
+                available: result.free
+            }));
 
-// Error handling for WebSocket messages
-wss.on('messageError', (error) => {
-    console.error('WebSocket message error:', error);
-});
+            ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
+        })
+        .catch(err => {
+            console.error('Error scanning drives:', err);
+            ws.send('Error scanning drives');
+        });
+}
 
+function purgeDrives(ws) {
+    // Implement purging logic here
+    ws.send('Purging drives is not implemented yet.');
+}
