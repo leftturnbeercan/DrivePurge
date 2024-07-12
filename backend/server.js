@@ -57,12 +57,13 @@ function scanDrives(ws) {
 
             result.blockdevices.forEach(device => {
                 if (!device.mountpoint && device.name !== bootDrive) {
+                    const sizeInGB = parseFloat(device.size.replace(/[A-Za-z]/g, '')) * (device.size.includes('G') ? 1 : 1024);
                     try {
                         const info = diskusage.checkSync(`/dev/${device.name}`);
                         console.log(`Disk usage for /dev/${device.name}:`, info); // Log disk usage info
                         driveList.push({
                             name: device.name,
-                            total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
+                            total: sizeInGB.toFixed(2), // Use lsblk size directly
                             used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
                             available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
                         });
