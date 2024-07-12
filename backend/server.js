@@ -57,7 +57,7 @@ function scanDrives(ws) {
 
             result.blockdevices.forEach(device => {
                 if (!device.mountpoint && device.name !== bootDrive) {
-                    const sizeInGB = parseFloat(device.size.replace(/[A-Za-z]/g, '')) * (device.size.includes('G') ? 1 : 1024);
+                    const sizeInGB = parseFloat(device.size.replace(/[A-Za-z]/g, '')) * (device.size.includes('G') ? 1 : 0.001);
                     try {
                         const info = diskusage.checkSync(`/dev/${device.name}`);
                         console.log(`Disk usage for /dev/${device.name}:`, info); // Log disk usage info
