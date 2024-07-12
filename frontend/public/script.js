@@ -1,54 +1,77 @@
 document.addEventListener('DOMContentLoaded', function () {
-    // Function to simulate scanning drives
+    const ip = prompt("Enter the backend server IP address:", "localhost");
+    const port = prompt("Enter the backend server port:", "8080");
+    const wsUrl = `ws://${ip}:${port}`;
+
+    let ws = new WebSocket(wsUrl);
+
+    ws.addEventListener('open', function (event) {
+        console.log('WebSocket connection established with the server');
+    });
+
+    ws.addEventListener('close', function (event) {
+        console.log('WebSocket connection closed');
+    });
+
+    ws.addEventListener('error', function (event) {
+        console.error('WebSocket encountered an error:', event);
+    });
+
+    ws.addEventListener('message', function (event) {
+        const data = JSON.parse(event.data);
+        if (data.type === 'scan') {
+            updateDriveList(data.drives);
+        } else {
+            console.log(data.message);
+        }
+    });
+
+    function sendMessageToBackend(message) {
+        if (ws.readyState === WebSocket.OPEN) {
+            ws.send(message);
+        } else {
+            console.log('WebSocket connection is not open. Cannot send message.');
+        }
+    }
+
     function scanDrives() {
-        // Dummy data for demonstration
-        const drives = ['Drive 1', 'Drive 2', 'Drive 3'];
-        
-        // Clear existing drive list
+        console.log('Scanning drives...');
+        sendMessageToBackend('scan');
+    }
+
+    function handleScanButtonClick() {
+        scanDrives();
+    }
+
+    function handlePurgeButtonClick() {
+        console.log('Purging drives...');
+        sendMessageToBackend('purge');
+    }
+
+    function updateDriveList(drives) {
         const driveList = document.getElementById('drive-list');
         driveList.innerHTML = '';
-        
-        // Populate drive list with dummy data
         drives.forEach(drive => {
             const li = document.createElement('li');
-            li.textContent = drive;
+            li.textContent = `${drive.name} - Total: ${drive.total}, Used: ${drive.used}, Available: ${drive.available}`;
             driveList.appendChild(li);
         });
     }
-    
-    // Function to handle scan button click
-    function handleScanButtonClick() {
-        // Get IP address and port from user input
-        const ipAddress = prompt('Enter the IP address of the backend server:');
-        const port = prompt('Enter the port of the backend server:');
-        
-        // Check if IP address and port are provided
-        if (ipAddress && port) {
-            // Attempt to establish WebSocket connection
-            const ws = new WebSocket(`ws://${ipAddress}:${port}`);
-            
-            // Event listener for WebSocket connection open
-            ws.addEventListener('open', function (event) {
-                // Connection established, simulate scanning drives
-                scanDrives();
-            });
-            
-            // Event listener for WebSocket errors
-            ws.addEventListener('error', function (event) {
-                console.error('WebSocket encountered an error:', event);
-            });
-            
-            // Event listener for WebSocket close
-            ws.addEventListener('close', function (event) {
-                console.log('WebSocket connection closed.');
-            });
-        } else {
-            console.log('Invalid IP address or port provided.');
-        }
-    }
-    
-    // Add event listener to scan button
+
     const scanButton = document.getElementById('scan-button');
     scanButton.addEventListener('click', handleScanButtonClick);
-});
 
+    const purgeButton = document.getElementById('purge-button');
+    purgeButton.addEventListener('click', handlePurgeButtonClick);
+
+    const driveList = document.getElementById('drive-list');
+    const observer = new MutationObserver(function(mutations) {
+        mutations.forEach(function(mutation) {
+            if (mutation.type === 'childList') {
+                console.log('Drive list has been modified.');
+            }
+        });
+    });
+
+    observer.observe(driveList, { childList: true });
+});
