@@ -56,14 +56,15 @@ function scanDrives(ws) {
 
             result.blockdevices.forEach(device => {
                 if (!device.mountpoint && device.name !== bootDrive) {
-                    const sizeInGB = parseFloat(device.size.replace(/[A-Za-z]/g, '')) * (device.size.includes('G') ? 1 : 0.001);
-                    exec(`df --output=source,size,used,avail -B1 /dev/${device.name}`, (dfError, dfStdout, dfStderr) => {
+                    exec(`df --block-size=1 /dev/${device.name}`, (dfError, dfStdout, dfStderr) => {
                         if (dfError) {
                             console.error(`Error executing df: ${dfError}`);
                             return;
                         }
 
                         const dfLines = dfStdout.split('\n');
+                        if (dfLines.length < 2) return;
+
                         const dfData = dfLines[1].split(/\s+/);
                         const total = (parseInt(dfData[1]) / (1024 ** 3)).toFixed(2); // Convert to GB
                         const used = (parseInt(dfData[2]) / (1024 ** 3)).toFixed(2); // Convert to GB
