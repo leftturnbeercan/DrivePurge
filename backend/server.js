@@ -1,5 +1,12 @@
 const WebSocket = require('ws');
-const diskinfo = require('diskinfo');
+const diskusage = require('diskusage');
+const path = require('path');
+
+// Define the directories to scan for disk usage
+const drivesToCheck = [
+    path.parse('/').root, // Root directory
+    path.parse('/home').root // Home directory (Linux example)
+];
 
 const wss = new WebSocket.Server({ port: 8080 });
 
@@ -24,23 +31,23 @@ wss.on('connection', function connection(ws) {
 });
 
 function scanDrives(ws) {
-    diskinfo.getDrives((err, drives) => {
-        if (err) {
-            console.error('Error scanning drives:', err);
-            ws.send(JSON.stringify({ type: 'error', message: 'Error scanning drives' }));
-            return;
+    const driveList = drivesToCheck.map(drivePath => {
+        try {
+            const { total, free } = diskusage.checkSync(drivePath);
+            return {
+                name: drivePath,
+                total,
+                used: total - free,
+                available: free
+            };
+        } catch (err) {
+            console.error('Error scanning drive:', drivePath, err);
+            return null;
         }
+    }).filter(drive => drive !== null);
 
-        const driveList = drives.map(drive => ({
-            name: drive.mounted,
-            total: drive.blocks,
-            used: drive.used,
-            available: drive.available
-        }));
-
-        console.log('Sending drive list:', driveList);
-        ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
-    });
+    console.log('Sending drive list:', driveList);
+    ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
 }
 
 function purgeDrives(ws) {
