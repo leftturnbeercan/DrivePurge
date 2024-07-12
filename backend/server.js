@@ -41,9 +41,9 @@ function scanDrives(ws) {
             const { total, free } = diskusage.checkSync(drivePath);
             return {
                 name: drivePath,
-                total,
-                used: total - free,
-                available: free
+                total: (total / (1024 ** 3)).toFixed(2), // Convert to GB
+                used: ((total - free) / (1024 ** 3)).toFixed(2), // Convert to GB
+                available: (free / (1024 ** 3)).toFixed(2) // Convert to GB
             };
         } catch (err) {
             console.error('Error scanning drive:', drivePath, err);
