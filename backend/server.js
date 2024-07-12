@@ -19,7 +19,7 @@ wss.on('connection', function connection(ws) {
         } else if (message === 'purge') {
             purgeDrives(ws);
         } else {
-            ws.send(`Unknown command: ${message}`);
+            ws.send(JSON.stringify({ type: 'error', message: `Unknown command: ${message}` }));
         }
     });
 });
@@ -36,7 +36,7 @@ function scanDrives(ws) {
                 available: result.free
             }));
 
-            console.log('Sending drive list:', driveList); // Log the drive list being sent
+            console.log('Sending drive list:', driveList);
             ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
         })
         .catch(err => {
@@ -46,5 +46,9 @@ function scanDrives(ws) {
 }
 
 function purgeDrives(ws) {
-    ws.send('Purging drives is not implemented yet.');
+    ws.send(JSON.stringify({ type: 'purge', message: 'Purging drives is not implemented yet.' }));
 }
+
+wss.on('error', (error) => {
+    console.error('WebSocket server encountered an error:', error);
+});

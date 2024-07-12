@@ -18,14 +18,18 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     ws.addEventListener('message', function (event) {
-        console.log('Message received from server:', event.data); // Log the received data
-        const data = JSON.parse(event.data);
-        if (data.type === 'scan') {
-            updateDriveList(data.drives);
-        } else if (data.type === 'error') {
-            console.error('Error from server:', data.message);
-        } else {
-            console.log(data.message);
+        try {
+            const data = JSON.parse(event.data);
+            console.log('Message received from server:', data);
+            if (data.type === 'scan') {
+                updateDriveList(data.drives);
+            } else if (data.type === 'error') {
+                console.error('Error from server:', data.message);
+            } else {
+                console.log(data.message);
+            }
+        } catch (e) {
+            console.error('Failed to parse message from server as JSON:', event.data);
         }
     });
 
@@ -59,7 +63,7 @@ document.addEventListener('DOMContentLoaded', function () {
             li.textContent = `${drive.name} - Total: ${drive.total}, Used: ${drive.used}, Available: ${drive.available}`;
             driveList.appendChild(li);
         });
-        console.log('Drive list updated:', drives); // Log the updated drive list
+        console.log('Drive list updated:', drives);
     }
 
     const scanButton = document.getElementById('scan-button');
