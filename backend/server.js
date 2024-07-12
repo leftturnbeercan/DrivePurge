@@ -21,6 +21,11 @@ wss.on('connection', function connection(ws) {
     ws.on('message', function incoming(message) {
         console.log('Received message from client:', message);
 
+        // Ensure message is correctly parsed and handled
+        if (typeof message === 'string') {
+            message = message.trim().toLowerCase();
+        }
+
         if (message === 'scan') {
             scanDrives(ws);
         } else if (message === 'purge') {
