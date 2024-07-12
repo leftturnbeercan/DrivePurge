@@ -53,40 +53,21 @@ function scanDrives(ws) {
             }
 
             const driveList = [];
+            const bootDrive = os.platform() === 'win32' ? 'C:' : '/'; // Default to C: for Windows and / for Unix-based systems
 
             result.blockdevices.forEach(device => {
-                if (device.mountpoint) {
+                if (!device.mountpoint && device.name !== bootDrive) {
                     try {
-                        const info = diskusage.checkSync(device.mountpoint);
+                        const info = diskusage.checkSync(`/dev/${device.name}`);
                         driveList.push({
                             name: device.name,
-                            mountpoint: device.mountpoint,
                             total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
                             used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
                             available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
                         });
                     } catch (err) {
-                        console.error(`Error getting disk usage for drive ${device.mountpoint}:`, err);
+                        console.error(`Error getting disk usage for drive /dev/${device.name}:`, err);
                     }
-                }
-
-                if (device.children) {
-                    device.children.forEach(child => {
-                        if (child.mountpoint) {
-                            try {
-                                const info = diskusage.checkSync(child.mountpoint);
-                                driveList.push({
-                                    name: child.name,
-                                    mountpoint: child.mountpoint,
-                                    total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
-                                    used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
-                                    available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
-                                });
-                            } catch (err) {
-                                console.error(`Error getting disk usage for drive ${child.mountpoint}:`, err);
-                            }
-                        }
-                    });
                 }
             });
 
