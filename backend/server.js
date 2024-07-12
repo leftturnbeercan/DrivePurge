@@ -1,5 +1,4 @@
 const WebSocket = require('ws');
-const diskusage = require('diskusage');
 const os = require('os');
 const { exec } = require('child_process');
 
@@ -41,7 +40,7 @@ function scanDrives(ws) {
                 return;
             }
 
-            console.log('lsblk output:', stdout); // Add this line to log the output
+            console.log('lsblk output:', stdout);
 
             let result;
             try {
@@ -58,23 +57,33 @@ function scanDrives(ws) {
             result.blockdevices.forEach(device => {
                 if (!device.mountpoint && device.name !== bootDrive) {
                     const sizeInGB = parseFloat(device.size.replace(/[A-Za-z]/g, '')) * (device.size.includes('G') ? 1 : 0.001);
-                    try {
-                        const info = diskusage.checkSync(`/dev/${device.name}`);
-                        console.log(`Disk usage for /dev/${device.name}:`, info); // Log disk usage info
+                    exec(`df --output=source,size,used,avail -B1 /dev/${device.name}`, (dfError, dfStdout, dfStderr) => {
+                        if (dfError) {
+                            console.error(`Error executing df: ${dfError}`);
+                            return;
+                        }
+
+                        const dfLines = dfStdout.split('\n');
+                        const dfData = dfLines[1].split(/\s+/);
+                        const total = (parseInt(dfData[1]) / (1024 ** 3)).toFixed(2); // Convert to GB
+                        const used = (parseInt(dfData[2]) / (1024 ** 3)).toFixed(2); // Convert to GB
+                        const available = (parseInt(dfData[3]) / (1024 ** 3)).toFixed(2); // Convert to GB
+
                         driveList.push({
                             name: device.name,
-                            total: sizeInGB.toFixed(2), // Use lsblk size directly
-                            used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
-                            available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
+                            total: total,
+                            used: used,
+                            available: available
                         });
-                    } catch (err) {
-                        console.error(`Error getting disk usage for drive /dev/${device.name}:`, err);
-                    }
+
+                        // Send the drive list to the client after processing all drives
+                        if (driveList.length === result.blockdevices.filter(d => !d.mountpoint && d.name !== bootDrive).length) {
+                            console.log('Sending drive list:', driveList);
+                            ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
+                        }
+                    });
                 }
             });
-
-            console.log('Sending drive list:', driveList);
-            ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
         });
     }
 }
