@@ -1,85 +1,71 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const ip = prompt("Enter the backend server IP address:", "localhost");
-    const port = prompt("Enter the backend server port:", "8080");
-    const wsUrl = `ws://${ip}:${port}`;
+    let websocket;
 
-    let ws = new WebSocket(wsUrl);
+    function connectWebSocket() {
+        const ipAddress = prompt("Enter the backend server IP address:");
+        const port = prompt("Enter the backend server port:");
 
-    ws.addEventListener('open', function (event) {
-        console.log('WebSocket connection established with the server');
-    });
+        if (!ipAddress || !port) {
+            alert('IP address and port are required.');
+            return;
+        }
 
-    ws.addEventListener('close', function (event) {
-        console.log('WebSocket connection closed');
-    });
+        websocket = new WebSocket(`ws://${ipAddress}:${port}`);
 
-    ws.addEventListener('error', function (event) {
-        console.error('WebSocket encountered an error:', event);
-    });
+        websocket.onopen = function () {
+            console.log('WebSocket connection established with the server');
+        };
 
-    ws.addEventListener('message', function (event) {
-        try {
-            const data = JSON.parse(event.data);
-            console.log('Message received from server:', data);
-            if (data.type === 'scan') {
-                updateDriveList(data.drives);
-            } else if (data.type === 'error') {
-                console.error('Error from server:', data.message);
-            } else {
-                console.log(data.message);
+        websocket.onmessage = function (event) {
+            console.log('Message received from server:', event.data);
+            try {
+                const data = JSON.parse(event.data);
+                if (data.type === 'scan') {
+                    displayDrives(data.drives);
+                } else if (data.type === 'purge') {
+                    console.log(data.message);
+                } else if (data.type === 'error') {
+                    console.error('Error from server:', data.message);
+                }
+            } catch (e) {
+                console.error('Failed to parse server message:', e);
             }
-        } catch (e) {
-            console.error('Failed to parse message from server as JSON:', event.data);
-        }
-    });
+        };
 
-    function sendMessageToBackend(message) {
-        if (ws.readyState === WebSocket.OPEN) {
-            ws.send(message);
-        } else {
-            console.log('WebSocket connection is not open. Cannot send message.');
-        }
+        websocket.onerror = function (event) {
+            console.error('WebSocket encountered an error:', event);
+        };
+
+        websocket.onclose = function () {
+            console.log('WebSocket connection closed');
+        };
     }
 
-    function scanDrives() {
-        console.log('Scanning drives...');
-        sendMessageToBackend('scan');
-    }
-
-    function handleScanButtonClick() {
-        scanDrives();
-    }
-
-    function handlePurgeButtonClick() {
-        console.log('Purging drives...');
-        sendMessageToBackend('purge');
-    }
-
-    function updateDriveList(drives) {
+    function displayDrives(drives) {
         const driveList = document.getElementById('drive-list');
         driveList.innerHTML = '';
         drives.forEach(drive => {
             const li = document.createElement('li');
-            li.textContent = `${drive.name} - Total: ${drive.total}, Used: ${drive.used}, Available: ${drive.available}`;
+            li.textContent = `${drive.name}: Total - ${drive.total} bytes, Used - ${drive.used} bytes, Available - ${drive.available} bytes`;
             driveList.appendChild(li);
         });
-        console.log('Drive list updated:', drives);
     }
 
-    const scanButton = document.getElementById('scan-button');
-    scanButton.addEventListener('click', handleScanButtonClick);
+    function sendMessageToBackend(message) {
+        if (websocket && websocket.readyState === WebSocket.OPEN) {
+            websocket.send(message);
+        } else {
+            console.error('WebSocket connection is not open. Cannot send message.');
+        }
+    }
 
-    const purgeButton = document.getElementById('purge-button');
-    purgeButton.addEventListener('click', handlePurgeButtonClick);
-
-    const driveList = document.getElementById('drive-list');
-    const observer = new MutationObserver(function(mutations) {
-        mutations.forEach(function(mutation) {
-            if (mutation.type === 'childList') {
-                console.log('Drive list has been modified.');
-            }
-        });
+    document.getElementById('scan-button').addEventListener('click', function () {
+        sendMessageToBackend('scan');
     });
 
-    observer.observe(driveList, { childList: true });
+    document.getElementById('purge-button').addEventListener('click', function () {
+        sendMessageToBackend('purge');
+    });
+
+    connectWebSocket();
 });

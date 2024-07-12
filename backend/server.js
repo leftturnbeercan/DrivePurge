@@ -8,7 +8,8 @@ const drivesToCheck = [
     path.parse('/home').root // Home directory (Linux example)
 ];
 
-const wss = new WebSocket.Server({ port: 8080 });
+// Create a WebSocket server listening on all interfaces
+const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
 
 wss.on('listening', () => {
     console.log('WebSocket server is listening on port 8080...');
