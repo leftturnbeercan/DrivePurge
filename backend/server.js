@@ -1,12 +1,7 @@
 const WebSocket = require('ws');
 const diskusage = require('diskusage');
+const os = require('os');
 const path = require('path');
-
-// Define the directories to scan for disk usage
-const drivesToCheck = [
-    path.parse('/').root, // Root directory
-    path.parse('/home').root // Home directory (Linux example)
-];
 
 // Create a WebSocket server listening on all interfaces
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
@@ -36,20 +31,22 @@ wss.on('connection', function connection(ws) {
 });
 
 function scanDrives(ws) {
-    const driveList = drivesToCheck.map(drivePath => {
+    const drives = os.platform() === 'win32' ? ['C:'] : ['/']; // Adjust for more drives if needed
+    const driveList = [];
+
+    drives.forEach(drive => {
         try {
-            const { total, free } = diskusage.checkSync(drivePath);
-            return {
-                name: drivePath,
-                total: (total / (1024 ** 3)).toFixed(2), // Convert to GB
-                used: ((total - free) / (1024 ** 3)).toFixed(2), // Convert to GB
-                available: (free / (1024 ** 3)).toFixed(2) // Convert to GB
-            };
+            const info = diskusage.checkSync(drive);
+            driveList.push({
+                name: drive,
+                total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
+                used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
+                available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
+            });
         } catch (err) {
-            console.error('Error scanning drive:', drivePath, err);
-            return null;
+            console.error(`Error getting disk usage for drive ${drive}:`, err);
         }
-    }).filter(drive => drive !== null);
+    });
 
     console.log('Sending drive list:', driveList);
     ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
