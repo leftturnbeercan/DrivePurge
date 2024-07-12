@@ -25,7 +25,7 @@ wss.on('connection', function connection(ws) {
 });
 
 function scanDrives(ws) {
-    const drives = ['/']; // Root directory for Unix-based systems
+    const drives = ['/'];
 
     Promise.all(drives.map(drive => diskusage.check(drive)))
         .then(results => {
@@ -36,15 +36,15 @@ function scanDrives(ws) {
                 available: result.free
             }));
 
+            console.log('Sending drive list:', driveList); // Log the drive list being sent
             ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
         })
         .catch(err => {
             console.error('Error scanning drives:', err);
-            ws.send('Error scanning drives');
+            ws.send(JSON.stringify({ type: 'error', message: 'Error scanning drives' }));
         });
 }
 
 function purgeDrives(ws) {
-    // Implement purging logic here
     ws.send('Purging drives is not implemented yet.');
 }

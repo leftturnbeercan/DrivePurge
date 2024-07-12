@@ -18,9 +18,12 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 
     ws.addEventListener('message', function (event) {
+        console.log('Message received from server:', event.data); // Log the received data
         const data = JSON.parse(event.data);
         if (data.type === 'scan') {
             updateDriveList(data.drives);
+        } else if (data.type === 'error') {
+            console.error('Error from server:', data.message);
         } else {
             console.log(data.message);
         }
@@ -56,6 +59,7 @@ document.addEventListener('DOMContentLoaded', function () {
             li.textContent = `${drive.name} - Total: ${drive.total}, Used: ${drive.used}, Available: ${drive.available}`;
             driveList.appendChild(li);
         });
+        console.log('Drive list updated:', drives); // Log the updated drive list
     }
 
     const scanButton = document.getElementById('scan-button');
