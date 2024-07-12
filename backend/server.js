@@ -50,6 +50,7 @@ function scanDrives(ws) {
                         const info = diskusage.checkSync(device.mountpoint);
                         driveList.push({
                             name: device.name,
+                            mountpoint: device.mountpoint,
                             total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
                             used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
                             available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
