@@ -59,6 +59,7 @@ function scanDrives(ws) {
                 if (!device.mountpoint && device.name !== bootDrive) {
                     try {
                         const info = diskusage.checkSync(`/dev/${device.name}`);
+                        console.log(`Disk usage for /dev/${device.name}:`, info); // Log disk usage info
                         driveList.push({
                             name: device.name,
                             total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
