@@ -53,6 +53,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     function sendMessageToBackend(message) {
         if (websocket && websocket.readyState === WebSocket.OPEN) {
+            console.log('Sending message to backend:', message);
             websocket.send(message);
         } else {
             console.error('WebSocket connection is not open. Cannot send message.');

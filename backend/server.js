@@ -22,16 +22,15 @@ wss.on('connection', function connection(ws) {
         console.log('Received message from client:', message);
 
         // Ensure message is correctly parsed and handled
-        if (typeof message === 'string') {
-            message = message.trim().toLowerCase();
-        }
+        const parsedMessage = message.trim().toLowerCase();
+        console.log('Parsed message:', parsedMessage);
 
-        if (message === 'scan') {
+        if (parsedMessage === 'scan') {
             scanDrives(ws);
-        } else if (message === 'purge') {
+        } else if (parsedMessage === 'purge') {
             purgeDrives(ws);
         } else {
-            ws.send(JSON.stringify({ type: 'error', message: `Unknown command: ${message}` }));
+            ws.send(JSON.stringify({ type: 'error', message: `Unknown command: ${parsedMessage}` }));
         }
     });
 });
