@@ -41,7 +41,17 @@ function scanDrives(ws) {
                 return;
             }
 
-            const result = JSON.parse(stdout);
+            console.log('lsblk output:', stdout); // Add this line to log the output
+
+            let result;
+            try {
+                result = JSON.parse(stdout);
+            } catch (err) {
+                console.error(`Error parsing lsblk output: ${err}`);
+                ws.send(JSON.stringify({ type: 'error', message: 'Error parsing drive information' }));
+                return;
+            }
+
             const driveList = [];
 
             result.blockdevices.forEach(device => {
