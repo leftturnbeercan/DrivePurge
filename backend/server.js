@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
 const diskusage = require('diskusage');
 const os = require('os');
-const path = require('path');
+const { exec } = require('child_process');
 
 // Create a WebSocket server listening on all interfaces
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
@@ -31,25 +31,39 @@ wss.on('connection', function connection(ws) {
 });
 
 function scanDrives(ws) {
-    const drives = os.platform() === 'win32' ? ['C:'] : ['/']; // Adjust for more drives if needed
-    const driveList = [];
+    if (os.platform() === 'win32') {
+        // Implement Windows-specific logic if needed
+    } else {
+        exec('lsblk -o NAME,SIZE,MOUNTPOINT -J', (error, stdout, stderr) => {
+            if (error) {
+                console.error(`Error executing lsblk: ${error}`);
+                ws.send(JSON.stringify({ type: 'error', message: 'Error scanning drives' }));
+                return;
+            }
 
-    drives.forEach(drive => {
-        try {
-            const info = diskusage.checkSync(drive);
-            driveList.push({
-                name: drive,
-                total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
-                used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
-                available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
+            const result = JSON.parse(stdout);
+            const driveList = [];
+
+            result.blockdevices.forEach(device => {
+                if (device.mountpoint) {
+                    try {
+                        const info = diskusage.checkSync(device.mountpoint);
+                        driveList.push({
+                            name: device.name,
+                            total: (info.total / (1024 ** 3)).toFixed(2), // Convert to GB
+                            used: ((info.total - info.free) / (1024 ** 3)).toFixed(2), // Convert to GB
+                            available: (info.free / (1024 ** 3)).toFixed(2) // Convert to GB
+                        });
+                    } catch (err) {
+                        console.error(`Error getting disk usage for drive ${device.mountpoint}:`, err);
+                    }
+                }
             });
-        } catch (err) {
-            console.error(`Error getting disk usage for drive ${drive}:`, err);
-        }
-    });
 
-    console.log('Sending drive list:', driveList);
-    ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
+            console.log('Sending drive list:', driveList);
+            ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
+        });
+    }
 }
 
 function purgeDrives(ws) {
