@@ -11,20 +11,20 @@ wss.on('connection', function connection(ws) {
     console.log('A new client connected!');
 
     ws.on('message', function incoming(message) {
-        console.log('Received message from client:', message.toString());
+        console.log('Received message from client:', message.toString().trim());
         const command = message.toString().trim();
 
-        switch(command) {
-            case 'scan':
-                scanDrives(ws);
-                break;
-            default:
-                if (command.startsWith('purge ')) {
-                    purgeDrive(ws, command.split(' ')[1]);
-                } else {
-                    ws.send(JSON.stringify({ type: 'error', message: 'Unknown command' }));
-                }
-                break;
+        if (command === 'scan') {
+            scanDrives(ws);
+        } else if (command.startsWith('purge')) {
+            const parts = command.split(' ');
+            if (parts.length === 2) {
+                purgeDrive(ws, parts[1]);
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Invalid purge command' }));
+            }
+        } else {
+            ws.send(JSON.stringify({ type: 'error', message: 'Unknown command' }));
         }
     });
 });
@@ -38,12 +38,14 @@ function scanDrives(ws) {
         }
         const output = JSON.parse(stdout);
         const drives = output.blockdevices.map((drive) => {
-            return {
-                name: drive.name,
-                size: drive.size,
-                mountpoint: (drive.children || []).map(child => child.mountpoint).filter(mp => mp).join(', ') || 'Not mounted'
-            };
-        }).filter(drive => drive.mountpoint !== '/');
+            if (!drive.children && drive.mountpoint !== '/') {
+                return {
+                    name: drive.name,
+                    size: drive.size,
+                    mountpoint: drive.mountpoint || 'Not mounted'
+                };
+            }
+        }).filter(Boolean);
 
         console.log('Sending drive list:', drives);
         ws.send(JSON.stringify({ type: 'scan', drives }));
