@@ -1,19 +1,17 @@
 document.addEventListener('DOMContentLoaded', function() {
-    let serverAddress = prompt("Please enter the WebSocket server address (e.g., ws://192.168.1.2:8080)", "ws://localhost:8080");
-
-    const ws = new WebSocket(serverAddress);
+    const ws = new WebSocket('ws://localhost:8080'); // Adjust the address as needed
 
     ws.onopen = function() {
-        console.log("WebSocket connection established with the server at " + serverAddress);
+        console.log("WebSocket connection established.");
     };
 
     ws.onerror = function(error) {
         console.log("WebSocket encountered an error: ", error);
-        alert("Failed to connect to WebSocket server at " + serverAddress);
+        alert("Failed to connect to WebSocket server.");
     };
 
     ws.onmessage = function(event) {
-        console.log("Message from server:", event.data);
+        console.log("Message from server: ", event.data);
         const data = JSON.parse(event.data);
         if (data.type === 'scan') {
             updateDriveList(data.drives);
@@ -25,7 +23,6 @@ document.addEventListener('DOMContentLoaded', function() {
     };
 
     document.getElementById('scan-button').addEventListener('click', function() {
-        console.log('Sending message to backend: scan');
         ws.send(JSON.stringify({ type: 'scan' }));
     });
 
