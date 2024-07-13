@@ -1,31 +1,20 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const ws = new WebSocket('ws://10.0.0.39:8080'); // Adjust as needed
+    const ws = new WebSocket('ws://10.0.0.39:8080');  // Update the URL based on your server configuration
 
     ws.onopen = () => console.log("WebSocket connection established with the server");
-    ws.onerror = error => console.log("WebSocket encountered an error:", error);
+    ws.onerror = error => console.log("WebSocket encountered an error: ", error);
     ws.onmessage = event => {
-        console.log("Message received from server:", event.data);
+        console.log("Message received from server: ", event.data);
         const data = JSON.parse(event.data);
         if (data.type === 'scan' && data.drives) {
             updateDriveList(data.drives);
-        } else if (data.type === 'error') {
-            console.error('Error from server:', data.message);
         }
     };
 
-    document.getElementById('scan-button').addEventListener('click', () => {
+    const scanButton = document.getElementById('scan-button');
+    scanButton.addEventListener('click', () => {
         console.log('Sending message to backend: scan');
         ws.send('scan');
-    });
-
-    document.getElementById('purge-button').addEventListener('click', () => {
-        const driveName = prompt("Enter the drive name to purge (e.g., sda):");
-        if (!driveName || !confirm(`Are you sure you want to purge the drive ${driveName}? This action cannot be undone.`)) {
-            console.log('Purge cancelled by user.');
-            return;
-        }
-        console.log(`Sending message to backend to purge: ${driveName}`);
-        ws.send(`purge ${driveName}`);
     });
 
     function updateDriveList(drives) {
