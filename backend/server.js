@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const { exec } = require('child_process');
 
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
+let validDrives = [];
 
 wss.on('listening', () => {
     console.log('WebSocket server is listening on port 8080...');
@@ -42,7 +43,7 @@ function scanDrives(ws) {
             return;
         }
         const output = JSON.parse(stdout);
-        const drives = output.blockdevices
+        validDrives = output.blockdevices
             .filter(drive => !isRootOrSystemDrive(drive))
             .map(drive => ({
                 name: drive.name,
@@ -50,8 +51,8 @@ function scanDrives(ws) {
                 mountpoint: drive.mountpoint || 'Not mounted'
             }));
 
-        console.log('Sending drive list:', drives);
-        ws.send(JSON.stringify({ type: 'scan', drives }));
+        console.log('Sending drive list:', validDrives);
+        ws.send(JSON.stringify({ type: 'scan', drives: validDrives }));
     });
 }
 
@@ -60,8 +61,7 @@ function isRootOrSystemDrive(drive) {
 }
 
 function isValidDrive(driveName) {
-    // Add logic to validate if the drive is valid and not a system-critical drive
-    return driveName !== 'sda'; // Replace with your actual system drive names to exclude
+    return validDrives.some(drive => drive.name === driveName);
 }
 
 function purgeDrive(ws, driveName) {
