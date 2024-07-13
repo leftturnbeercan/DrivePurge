@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const ws = new WebSocket('ws://10.0.0.39:8080'); // Update with your server's IP and port if necessary
+    const ws = new WebSocket('ws://localhost:8080'); // Update with your server's IP and port if necessary
 
     ws.onopen = () => {
         console.log("WebSocket connection established with the server");
@@ -34,24 +34,34 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     document.getElementById('purge-button').addEventListener('click', () => {
-        const driveName = prompt("Enter the drive name to purge (e.g., sda):");
-        if (!driveName || !confirm(`Are you sure you want to purge the drive ${driveName}? This action cannot be undone.`)) {
+        const selectedDrives = Array.from(document.querySelectorAll('.drive-checkbox:checked')).map(cb => cb.value);
+        if (selectedDrives.length === 0) {
+            alert('No drives selected for purging.');
+            updateStatus('No drives selected for purging.');
+            return;
+        }
+        if (!confirm(`Are you sure you want to purge the following drives: ${selectedDrives.join(', ')}? This action cannot be undone.`)) {
             console.log('Purge cancelled by user.');
             updateStatus('Purge cancelled.');
             return;
         }
-        ws.send(`purge ${driveName}`);
-        updateStatus(`Purging drive ${driveName}...`);
-        console.log(`Sending message to backend to purge: ${driveName}`);
+        selectedDrives.forEach(driveName => {
+            ws.send(`purge ${driveName}`);
+            updateStatus(`Purging drive ${driveName}...`);
+            console.log(`Sending message to backend to purge: ${driveName}`);
+        });
     });
 
     function updateDriveList(drives) {
         const driveList = document.getElementById('drive-list');
         driveList.innerHTML = ''; // Clear the list
         drives.forEach(drive => {
-            const driveInfo = document.createElement('li');
-            driveInfo.textContent = `${drive.name}: Total - ${drive.size}, Mounted at - ${drive.mountpoint}`;
-            driveList.appendChild(driveInfo);
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                <input type="checkbox" class="drive-checkbox" value="${drive.name}" id="drive-${drive.name}">
+                <label for="drive-${drive.name}">${drive.name}: Total - ${drive.size}, Mounted at - ${drive.mountpoint}</label>
+            `;
+            driveList.appendChild(listItem);
         });
     }
 
