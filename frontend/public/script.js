@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function () {
-    const ws = new WebSocket('ws://<backend-server-ip>:8080');
+    const ws = new WebSocket('ws://10.0.0.39:8080');
 
     ws.onopen = function() {
         console.log("WebSocket connection established with the server");
