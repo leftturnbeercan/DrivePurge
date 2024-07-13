@@ -16,6 +16,13 @@ wss.on('connection', function connection(ws) {
 
         if (command === 'scan') {
             scanDrives(ws);
+        } else if (command.startsWith('purge')) {
+            const parts = command.split(' ');
+            if (parts.length === 2 && parts[1] !== 'sda') { // Example to exclude 'sda'
+                purgeDrive(ws, parts[1]);
+            } else {
+                ws.send(JSON.stringify({ type: 'error', message: 'Invalid or dangerous purge command' }));
+            }
         } else {
             ws.send(JSON.stringify({ type: 'error', message: 'Unknown command' }));
         }
@@ -29,24 +36,30 @@ function scanDrives(ws) {
             ws.send(JSON.stringify({ type: 'error', message: 'Failed to scan drives' }));
             return;
         }
-
-        console.log('lsblk output:', stdout);
         const output = JSON.parse(stdout);
-        const drives = output.blockdevices.map(drive => {
-            const isRootOrSystem = (drive.mountpoint === '/') ||
-                                   (drive.children && drive.children.some(child => child.mountpoint === '/'));
-            if (isRootOrSystem) {
-                return null;
-            }
-            return {
+        const drives = output.blockdevices
+            .filter(drive => drive.mountpoint !== '/')
+            .map(drive => ({
                 name: drive.name,
                 size: drive.size,
                 mountpoint: drive.mountpoint || 'Not mounted'
-            };
-        }).filter(drive => drive !== null);
+            }));
 
         console.log('Sending drive list:', drives);
         ws.send(JSON.stringify({ type: 'scan', drives }));
+    });
+}
+
+function purgeDrive(ws, driveName) {
+    const command = `sudo shred -v -n 3 -z /dev/${driveName}`;
+    exec(command, (error, stdout, stderr) => {
+        if (error) {
+            ws.send(JSON.stringify({ type: 'error', message: `Error purging drive ${driveName}: ${stderr}` }));
+            console.error('Error purging drive:', stderr);
+            return;
+        }
+        ws.send(JSON.stringify({ type: 'success', message: `Drive ${driveName} purged successfully.` }));
+        console.log(`Purge successful: ${stdout}`);
     });
 }
 
