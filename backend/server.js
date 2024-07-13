@@ -1,8 +1,6 @@
 const WebSocket = require('ws');
-const os = require('os');
 const { exec } = require('child_process');
 
-// Create a WebSocket server listening on all interfaces
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
 
 wss.on('listening', () => {
@@ -13,86 +11,42 @@ wss.on('connection', function connection(ws) {
     console.log('A new client connected!');
 
     ws.on('message', function incoming(message) {
-        console.log('Received message from client:', message);
-
-        // Convert message buffer to string
-        const parsedMessage = message.toString().trim().toLowerCase();
-        console.log('Parsed message:', parsedMessage);
-
-        if (parsedMessage === 'scan') {
+        console.log('Received message from client:', message.toString());
+        if (message.toString().trim() === 'scan') {
             scanDrives(ws);
-        } else if (parsedMessage === 'purge') {
-            purgeDrives(ws);
         } else {
-            ws.send(JSON.stringify({ type: 'error', message: `Unknown command: ${parsedMessage}` }));
+            ws.send(JSON.stringify({ type: 'error', message: 'Unknown command' }));
         }
     });
 });
 
 function scanDrives(ws) {
-    if (os.platform() === 'win32') {
-        // Implement Windows-specific logic if needed
-    } else {
-        exec('lsblk -o NAME,SIZE,MOUNTPOINT -J', (error, stdout, stderr) => {
-            if (error) {
-                console.error(`Error executing lsblk: ${error}`);
-                ws.send(JSON.stringify({ type: 'error', message: 'Error scanning drives' }));
-                return;
+    exec('lsblk -J -o NAME,SIZE,MOUNTPOINT', (error, stdout) => {
+        if (error) {
+            console.error('Error executing lsblk:', error);
+            ws.send(JSON.stringify({ type: 'error', message: 'Failed to scan drives' }));
+            return;
+        }
+        const output = JSON.parse(stdout);
+        const drives = output.blockdevices.map((drive) => {
+            if (drive.children) {
+                return {
+                    name: drive.name,
+                    size: drive.size,
+                    mountpoint: drive.children.map(child => child.mountpoint).join(', ')
+                };
+            } else {
+                return {
+                    name: drive.name,
+                    size: drive.size,
+                    mountpoint: drive.mountpoint || 'Not mounted'
+                };
             }
+        }).filter(drive => !drive.mountpoint.includes('/boot'));
 
-            console.log('lsblk output:', stdout);
-
-            let result;
-            try {
-                result = JSON.parse(stdout);
-            } catch (err) {
-                console.error(`Error parsing lsblk output: ${err}`);
-                ws.send(JSON.stringify({ type: 'error', message: 'Error parsing drive information' }));
-                return;
-            }
-
-            const driveList = [];
-            const bootDrive = os.platform() === 'win32' ? 'C:' : '/'; // Default to C: for Windows and / for Unix-based systems
-
-            result.blockdevices.forEach(device => {
-                if (!device.mountpoint && device.name !== bootDrive) {
-                    exec(`df --block-size=1 /dev/${device.name}`, (dfError, dfStdout, dfStderr) => {
-                        if (dfError) {
-                            console.error(`Error executing df: ${dfError}`);
-                            return;
-                        }
-
-                        const dfLines = dfStdout.split('\n');
-                        if (dfLines.length < 2) return;
-
-                        const dfData = dfLines[1].split(/\s+/);
-                        const total = (parseInt(dfData[1]) / (1024 ** 3)).toFixed(2); // Convert to GB
-                        const used = (parseInt(dfData[2]) / (1024 ** 3)).toFixed(2); // Convert to GB
-                        const available = (parseInt(dfData[3]) / (1024 ** 3)).toFixed(2); // Convert to GB
-
-                        driveList.push({
-                            name: device.name,
-                            total: total,
-                            used: used,
-                            available: available
-                        });
-
-                        // Send the drive list to the client after processing all drives
-                        if (driveList.length === result.blockdevices.filter(d => !d.mountpoint && d.name !== bootDrive).length) {
-                            console.log('Sending drive list:', driveList);
-                            ws.send(JSON.stringify({ type: 'scan', drives: driveList }));
-                        }
-                    });
-                }
-            });
-        });
-    }
+        console.log('Sending drive list:', drives);
+        ws.send(JSON.stringify({ type: 'scan', drives }));
+    });
 }
 
-function purgeDrives(ws) {
-    ws.send(JSON.stringify({ type: 'purge', message: 'Purging drives is not implemented yet.' }));
-}
-
-wss.on('error', (error) => {
-    console.error('WebSocket server encountered an error:', error);
-});
+console.log('WebSocket server running.');
