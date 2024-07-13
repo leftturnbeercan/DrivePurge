@@ -9,16 +9,20 @@
 <body>
     <div class="container">
         <h1>DrivePurge</h1>
+        <div id="status" class="status">Status: Waiting for user action...</div>
         <div class="drive-list">
             <h2>Connected Drives</h2>
             <ul id="drive-list">
+
                 <!-- Drive information will be dynamically populated here -->
+                 
             </ul>
         </div>
         <div class="controls">
             <button id="scan-button">Scan Drives</button>
-            <button id="purge-button">Purge Drives</button>
+            <button id="purge-button">Purge Selected Drives</button>
         </div>
+        <div id="log" class="log"></div> <!-- Add log section -->
     </div>
 
     <script src="script.js"></script>
