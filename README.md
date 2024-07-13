@@ -48,7 +48,7 @@ sudo npm start
 cd ../frontend
 npm start
 
-3. Open your web browser and navigate to http://localhost:3000(or the IP and Port you have set the server.js(backend) and/or script.js(frontend) to)
+3. Open your web browser and navigate to http://localhost:3000 (or the IP and Port you have set the server.js(backend) and/or script.js(frontend) to)
 
 4. Scan for connected drives by clicking the "Scan Drives" button.
 
