@@ -21,15 +21,20 @@ document.addEventListener('DOMContentLoaded', () => {
         } else if (data.type === 'error') {
             alert('Error: ' + data.message);
             updateStatus("Error: " + data.message);
+            appendLog("Error: " + data.message);
         } else if (data.type === 'success') {
             alert(data.message);
             updateStatus(data.message);
+            appendLog(data.message);
+        } else if (data.type === 'log') {
+            appendLog(data.message);
         }
     };
 
     document.getElementById('scan-button').addEventListener('click', () => {
         ws.send('scan');
         updateStatus("Scanning drives...");
+        appendLog("Scanning drives...");
         console.log('Sending message to backend: scan');
     });
 
@@ -38,16 +43,19 @@ document.addEventListener('DOMContentLoaded', () => {
         if (selectedDrives.length === 0) {
             alert('No drives selected for purging.');
             updateStatus('No drives selected for purging.');
+            appendLog('No drives selected for purging.');
             return;
         }
         if (!confirm(`Are you sure you want to purge the following drives: ${selectedDrives.join(', ')}? This action cannot be undone.`)) {
             console.log('Purge cancelled by user.');
             updateStatus('Purge cancelled.');
+            appendLog('Purge cancelled.');
             return;
         }
         selectedDrives.forEach(driveName => {
             ws.send(`purge ${driveName}`);
             updateStatus(`Purging drive ${driveName}...`);
+            appendLog(`Purging drive ${driveName}...`);
             console.log(`Sending message to backend to purge: ${driveName}`);
         });
     });
@@ -68,5 +76,13 @@ document.addEventListener('DOMContentLoaded', () => {
     function updateStatus(message) {
         const statusElement = document.getElementById('status');
         statusElement.textContent = message;
+    }
+
+    function appendLog(message) {
+        const logElement = document.getElementById('log');
+        const logEntry = document.createElement('div');
+        logEntry.textContent = message;
+        logElement.appendChild(logEntry);
+        logElement.scrollTop = logElement.scrollHeight; // Auto-scroll to the bottom
     }
 });
