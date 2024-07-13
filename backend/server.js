@@ -66,14 +66,22 @@ function isValidDrive(driveName) {
 
 function purgeDrive(ws, driveName) {
     const command = `sudo shred -v -n 3 -z /dev/${driveName}`;
-    exec(command, (error, stdout, stderr) => {
-        if (error) {
-            ws.send(JSON.stringify({ type: 'error', message: `Error purging drive ${driveName}: ${stderr}` }));
-            console.error('Error purging drive:', stderr);
-            return;
+    const purgeProcess = exec(command);
+
+    purgeProcess.stdout.on('data', data => {
+        ws.send(JSON.stringify({ type: 'log', message: data.toString() }));
+    });
+
+    purgeProcess.stderr.on('data', data => {
+        ws.send(JSON.stringify({ type: 'log', message: data.toString() }));
+    });
+
+    purgeProcess.on('close', code => {
+        if (code === 0) {
+            ws.send(JSON.stringify({ type: 'success', message: `Drive ${driveName} purged successfully.` }));
+        } else {
+            ws.send(JSON.stringify({ type: 'error', message: `Error purging drive ${driveName}` }));
         }
-        ws.send(JSON.stringify({ type: 'success', message: `Drive ${driveName} purged successfully.` }));
-        console.log(`Purge successful: ${stdout}`);
     });
 }
 
