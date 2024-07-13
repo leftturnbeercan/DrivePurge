@@ -18,10 +18,15 @@ wss.on('connection', function connection(ws) {
             scanDrives(ws);
         } else if (command.startsWith('purge')) {
             const parts = command.split(' ');
-            if (parts.length === 2 && parts[1] !== 'sda') { // Example to exclude 'sda'
-                purgeDrive(ws, parts[1]);
+            if (parts.length === 2) {
+                const driveName = parts[1];
+                if (isValidDrive(driveName)) {
+                    purgeDrive(ws, driveName);
+                } else {
+                    ws.send(JSON.stringify({ type: 'error', message: 'Invalid or dangerous purge command' }));
+                }
             } else {
-                ws.send(JSON.stringify({ type: 'error', message: 'Invalid or dangerous purge command' }));
+                ws.send(JSON.stringify({ type: 'error', message: 'Invalid purge command format' }));
             }
         } else {
             ws.send(JSON.stringify({ type: 'error', message: 'Unknown command' }));
@@ -38,7 +43,7 @@ function scanDrives(ws) {
         }
         const output = JSON.parse(stdout);
         const drives = output.blockdevices
-            .filter(drive => drive.mountpoint !== '/')
+            .filter(drive => !isRootOrSystemDrive(drive))
             .map(drive => ({
                 name: drive.name,
                 size: drive.size,
@@ -48,6 +53,15 @@ function scanDrives(ws) {
         console.log('Sending drive list:', drives);
         ws.send(JSON.stringify({ type: 'scan', drives }));
     });
+}
+
+function isRootOrSystemDrive(drive) {
+    return drive.mountpoint === '/' || (drive.children && drive.children.some(child => child.mountpoint === '/'));
+}
+
+function isValidDrive(driveName) {
+    // Add logic to validate if the drive is valid and not a system-critical drive
+    return driveName !== 'sda'; // Replace with your actual system drive names to exclude
 }
 
 function purgeDrive(ws, driveName) {
