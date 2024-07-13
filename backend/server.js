@@ -1,7 +1,7 @@
 const WebSocket = require('ws');
-const os = require('os');
-const diskusage = require('diskusage');
+const { exec } = require('child_process');
 
+// Start WebSocket Server on port 8080 and listen on all interfaces
 const wss = new WebSocket.Server({ port: 8080, host: '0.0.0.0' });
 
 wss.on('listening', () => {
@@ -27,7 +27,7 @@ wss.on('connection', function connection(ws) {
                 scanDrives(ws);
                 break;
             case 'purge':
-                // Purging logic will go here
+                // Placeholder for purging logic
                 break;
             default:
                 ws.send(JSON.stringify({ type: 'error', message: `Unknown command: ${command.type}` }));
@@ -36,20 +36,32 @@ wss.on('connection', function connection(ws) {
 });
 
 function scanDrives(ws) {
-    const path = os.platform() === 'win32' ? 'c:' : '/';
-    diskusage.check(path, (err, info) => {
-        if (err) {
-            console.error('Error getting disk info:', err);
+    // Using lsblk to get disk details in JSON format
+    exec("lsblk -J -o NAME,SIZE,MOUNTPOINT", (error, stdout, stderr) => {
+        if (error) {
+            console.error('Error fetching disk info:', error);
             ws.send(JSON.stringify({ type: 'error', message: 'Failed to get disk info' }));
             return;
         }
-        const drives = [{
-            name: 'sda',  // Adjust as needed
-            total: (info.total / 1e9).toFixed(2) + 'GB',
-            used: ((info.total - info.available) / 1e9).toFixed(2) + 'GB',
-            available: (info.available / 1e9).toFixed(2) + 'GB'
-        }];
-        ws.send(JSON.stringify({ type: 'scan', drives: drives }));
+        if (stderr) {
+            console.error('Error in lsblk:', stderr);
+            ws.send(JSON.stringify({ type: 'error', message: stderr }));
+            return;
+        }
+
+        const lsblkOutput = JSON.parse(stdout);
+        const drives = lsblkOutput.blockdevices.map(device => {
+            // Filter to include only main disks and exclude partitions
+            if (!device.children && device.mountpoint !== '/') {
+                return {
+                    name: device.name,
+                    total: device.size,
+                    mountpoint: device.mountpoint || "Not mounted"
+                };
+            }
+        }).filter(Boolean); // Remove undefined entries
+
+        ws.send(JSON.stringify({ type: 'scan', drives }));
     });
 }
 
