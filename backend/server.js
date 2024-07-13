@@ -16,13 +16,6 @@ wss.on('connection', function connection(ws) {
 
         if (command === 'scan') {
             scanDrives(ws);
-        } else if (command.startsWith('purge')) {
-            const parts = command.split(' ');
-            if (parts.length === 2 && parts[1] !== '/') {
-                purgeDrive(ws, parts[1]);
-            } else {
-                ws.send(JSON.stringify({ type: 'error', message: 'Invalid or dangerous purge command' }));
-            }
         } else {
             ws.send(JSON.stringify({ type: 'error', message: 'Unknown command' }));
         }
@@ -30,9 +23,9 @@ wss.on('connection', function connection(ws) {
 });
 
 function scanDrives(ws) {
-    exec('lsblk -J -o NAME,SIZE,MOUNTPOINT', (error, stdout, stderr) => {
+    exec('lsblk -J -o NAME,SIZE,MOUNTPOINT', (error, stdout) => {
         if (error) {
-            console.error('Error executing lsblk:', error, stderr);
+            console.error('Error executing lsblk:', error);
             ws.send(JSON.stringify({ type: 'error', message: 'Failed to scan drives' }));
             return;
         }
@@ -40,24 +33,21 @@ function scanDrives(ws) {
         console.log('lsblk output:', stdout);
         const output = JSON.parse(stdout);
         const drives = output.blockdevices.map(drive => {
-            if (!drive.mountpoint || drive.mountpoint === '/') {
+            const isRootOrSystem = (drive.mountpoint === '/') ||
+                                   (drive.children && drive.children.some(child => child.mountpoint === '/'));
+            if (isRootOrSystem) {
                 return null;
             }
-            return { name: drive.name, size: drive.size, mountpoint: drive.mountpoint || 'Not mounted' };
+            return {
+                name: drive.name,
+                size: drive.size,
+                mountpoint: drive.mountpoint || 'Not mounted'
+            };
         }).filter(drive => drive !== null);
-
-        if (drives.length === 0) {
-            console.log('No drives to send.');
-        }
 
         console.log('Sending drive list:', drives);
         ws.send(JSON.stringify({ type: 'scan', drives }));
     });
-}
-
-function purgeDrive(ws, driveName) {
-    console.log(`Received purge command for drive: ${driveName}`);
-    // Implementation as before
 }
 
 console.log('WebSocket server running.');
