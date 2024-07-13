@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', function() {
-    const ws = new WebSocket('ws://localhost:8080'); // Adjust the address as needed
+    const ws = new WebSocket('ws://10.0.0.39:8080'); // Adjust the address as needed
 
     ws.onopen = function() {
         console.log("WebSocket connection established.");
