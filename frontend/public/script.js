@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const ws = new WebSocket('ws://10.0.0.39:8080');
+    const ws = new WebSocket('ws://10.0.0.39:8080'); // Adjust as needed
 
     ws.onopen = () => console.log("WebSocket connection established with the server");
     ws.onerror = error => console.log("WebSocket encountered an error:", error);
@@ -13,15 +13,17 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    const scanButton = document.getElementById('scan-button');
-    scanButton.addEventListener('click', () => {
+    document.getElementById('scan-button').addEventListener('click', () => {
         console.log('Sending message to backend: scan');
         ws.send('scan');
     });
 
-    const purgeButton = document.getElementById('purge-button');
-    purgeButton.addEventListener('click', () => {
+    document.getElementById('purge-button').addEventListener('click', () => {
         const driveName = prompt("Enter the drive name to purge (e.g., sda):");
+        if (!driveName || !confirm(`Are you sure you want to purge the drive ${driveName}? This action cannot be undone.`)) {
+            console.log('Purge cancelled by user.');
+            return;
+        }
         console.log(`Sending message to backend to purge: ${driveName}`);
         ws.send(`purge ${driveName}`);
     });
